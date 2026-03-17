@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VersionWatch — IT Infrastructure Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #060911;
+  --bg2:      #0a0e18;
+  --surface:  #0d1320;
+  --surface2: #111826;
+  --border:   #182035;
+  --border2:  #1f2d48;
+  --accent:   #00c9a7;
+  --accent2:  #3b82f6;
+  --success:  #10b981;
+  --warn:     #f59e0b;
+  --danger:   #ef4444;
+  --text:     #dde6f5;
+  --text2:    #6e85a3;
+  --text3:    #384a60;
+  --ff-head:  'Rajdhani', sans-serif;
+  --ff-mono:  'JetBrains Mono', monospace;
+  --ff-body:  'Outfit', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--ff-body);
+  font-size: 14px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Noise + scan lines ─────────────────── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.07) 2px, rgba(0,0,0,.07) 4px);
+  pointer-events: none;
+  z-index: 999;
+}
+
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,201,167,.04) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Scrollbar ──────────────────────────── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ── Header ─────────────────────────────── */
+header {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 32px;
+  height: 64px;
+  background: rgba(6,9,17,.92);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+
+header::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: .3;
+}
+
+.logo {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--ff-head);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.logo-icon {
+  color: var(--accent);
+  font-size: 26px;
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+.logo em { color: var(--accent); font-style: normal; }
+
+.header-right {
+  display: flex; align-items: center; gap: 12px;
+}
+
+.last-check-label {
+  font-family: var(--ff-mono);
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: .5px;
+}
+
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 18px;
+  border: none; border-radius: 6px;
+  font-family: var(--ff-head);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .2s;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #000;
+}
+.btn-primary:hover { background: #00e8c0; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,201,167,.35); }
+.btn-primary:active { transform: translateY(0); }
+
+.btn-ghost {
+  background: var(--surface2);
+  color: var(--text2);
+  border: 1px solid var(--border2);
+}
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+.btn-icon {
+  background: var(--surface2);
+  color: var(--text2);
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  font-size: 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.btn-icon:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── API Key Banner ─────────────────────── */
+#apiKeyBanner {
+  display: none;
+  align-items: center; justify-content: center; gap: 16px;
+  padding: 12px 32px;
+  background: rgba(59,130,246,.08);
+  border-bottom: 1px solid rgba(59,130,246,.2);
+  font-size: 13px;
+  color: var(--accent2);
+}
+#apiKeyBanner.visible { display: flex; }
+#apiKeyBanner input {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(59,130,246,.4);
+  background: rgba(59,130,246,.06);
+  color: var(--text);
+  font-family: var(--ff-mono);
+  font-size: 12px;
+  width: 320px;
+}
+#apiKeyBanner input:focus { outline: none; border-color: var(--accent2); }
+
+/* ── Add Section ────────────────────────── */
+.add-section {
+  position: relative; z-index: 10;
+  padding: 28px 32px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+}
+
+.add-section h2 {
+  font-family: var(--ff-head);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 14px;
+}
+
+.form-row {
+  display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;
+}
+
+.form-group {
+  display: flex; flex-direction: column; gap: 5px;
+}
+
+.form-group label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+
+select, input[type="text"] {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: var(--ff-body);
+  font-size: 13px;
+  padding: 9px 14px;
+  transition: border-color .2s;
+  appearance: none;
+  outline: none;
+}
+
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236e85a3' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+  cursor: pointer;
+}
+
+select:focus, input[type="text"]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0,201,167,.12);
+}
+
+#productSelect { min-width: 260px; }
+#categorySelect { min-width: 170px; }
+#versionInput  { min-width: 130px; font-family: var(--ff-mono); }
+#labelInput    { min-width: 160px; }
+
+select option { background: var(--surface); color: var(--text); }
+
+/* ── Stats Bar ──────────────────────────── */
+.stats-bar {
+  display: flex; gap: 0;
+  padding: 0 32px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+}
+
+.stat-item {
+  display: flex; flex-direction: column;
+  padding: 14px 28px 14px 0;
+  margin-right: 28px;
+  border-right: 1px solid var(--border);
+}
+.stat-item:last-child { border-right: none; }
+
+.stat-value {
+  font-family: var(--ff-mono);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1;
+}
+.stat-label {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-top: 4px;
+}
+.stat-total   .stat-value { color: var(--text2); }
+.stat-ok      .stat-value { color: var(--success); }
+.stat-update  .stat-value { color: var(--warn); }
+.stat-error   .stat-value { color: var(--danger); }
+
+/* ── Main Grid ──────────────────────────── */
+main {
+  position: relative; z-index: 10;
+  padding: 28px 32px;
+}
+
+.controls-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.filter-tabs {
+  display: flex; gap: 4px;
+}
+
+.tab {
+  padding: 6px 14px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .5px;
+  cursor: pointer;
+  transition: all .15s;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text2);
+}
+.tab:hover { color: var(--text); }
+.tab.active {
+  background: var(--surface2);
+  border-color: var(--border2);
+  color: var(--accent);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+/* ── Product Card ───────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: all .25s;
+  position: relative;
+  animation: card-in .3s ease-out both;
+}
+.card:hover {
+  border-color: var(--border2);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0,0,0,.4);
+}
+
+.card.status-ok    { border-left: 3px solid var(--success); }
+.card.status-warn  { border-left: 3px solid var(--warn); }
+.card.status-error { border-left: 3px solid var(--danger); }
+.card.status-idle  { border-left: 3px solid var(--border2); }
+.card.status-checking { border-left: 3px solid var(--accent2); }
+
+.card-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.card-brand {
+  display: flex; flex-direction: column; gap: 3px;
+}
+
+.brand-name {
+  font-family: var(--ff-head);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+
+.product-name {
+  font-family: var(--ff-head);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.card-label {
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 2px;
+}
+
+.card-badges {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 5px;
+}
+
+.cat-badge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 3px;
+  background: var(--surface2);
+  color: var(--text3);
+  border: 1px solid var(--border);
+}
+
+.status-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 3px;
+}
+.status-badge.ok      { background: rgba(16,185,129,.12); color: var(--success); }
+.status-badge.warn    { background: rgba(245,158,11,.12);  color: var(--warn); }
+.status-badge.error   { background: rgba(239,68,68,.12);   color: var(--danger); }
+.status-badge.idle    { background: var(--surface2);       color: var(--text3); }
+.status-badge.checking {
+  background: rgba(59,130,246,.12);
+  color: var(--accent2);
+}
+
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.status-badge.ok    .status-dot { animation: pulse-dot-green 2s ease-in-out infinite; }
+.status-badge.warn  .status-dot { animation: pulse-dot-warn  1.5s ease-in-out infinite; }
+.status-badge.checking .status-dot { animation: spin-dot 1s linear infinite; border-radius: 0; background: transparent; border: 1.5px solid currentColor; border-top-color: transparent; width: 8px; height: 8px; }
+
+/* ── Version Block ──────────────────────── */
+.card-versions {
+  padding: 16px 18px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ver-block {
+  display: flex; flex-direction: column; gap: 4px;
+}
+
+.ver-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+
+.ver-value {
+  font-family: var(--ff-mono);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: .5px;
+  min-height: 24px;
+}
+
+.ver-value.latest-ok   { color: var(--success); }
+.ver-value.latest-warn { color: var(--warn); }
+.ver-value.loading     { color: var(--text3); font-size: 13px; }
+
+.ver-value .skeleton {
+  display: inline-block;
+  width: 80px; height: 16px;
+  background: linear-gradient(90deg, var(--surface2) 25%, var(--border2) 50%, var(--surface2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 3px;
+  vertical-align: middle;
+}
+
+.ver-notes {
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 2px;
+  font-style: italic;
+}
+
+/* ── Card Footer ────────────────────────── */
+.card-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 18px;
+}
+
+.last-checked {
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  color: var(--text3);
+}
+
+.card-actions { display: flex; gap: 6px; }
+
+.btn-sm {
+  padding: 5px 12px;
+  border-radius: 4px;
+  font-family: var(--ff-head);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .15s;
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  color: var(--text2);
+}
+.btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+
+.btn-sm-danger:hover { border-color: var(--danger); color: var(--danger); }
+
+/* ── Update Alert Banner on Card ───────── */
+.update-alert {
+  display: none;
+  margin: 0 18px 12px;
+  padding: 8px 12px;
+  background: rgba(245,158,11,.07);
+  border: 1px solid rgba(245,158,11,.2);
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: var(--warn);
+  line-height: 1.4;
+}
+.card.status-warn .update-alert { display: block; }
+
+/* ── Empty State ────────────────────────── */
+.empty-state {
+  display: none;
+  flex-direction: column; align-items: center; justify-content: center;
+  padding: 80px 20px;
+  text-align: center;
+}
+.empty-state.visible { display: flex; }
+
+.empty-icon {
+  font-size: 48px;
+  color: var(--text3);
+  margin-bottom: 16px;
+}
+
+.empty-title {
+  font-family: var(--ff-head);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 8px;
+}
+
+.empty-sub {
+  font-size: 13px;
+  color: var(--text3);
+  max-width: 360px;
+  line-height: 1.6;
+}
+
+/* ── Animations ────────────────────────── */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; text-shadow: 0 0 8px var(--accent); }
+  50%       { opacity: .7; text-shadow: 0 0 18px var(--accent); }
+}
+@keyframes pulse-dot-green {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .4; }
+}
+@keyframes pulse-dot-warn {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .3; }
+}
+@keyframes spin-dot {
+  to { transform: rotate(360deg); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Toast ─────────────────────────────── */
+#toast-container {
+  position: fixed; bottom: 24px; right: 24px;
+  display: flex; flex-direction: column; gap: 8px;
+  z-index: 9999;
+}
+.toast {
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,.1);
+  animation: toast-in .3s ease-out;
+  max-width: 340px;
+}
+.toast.success { background: rgba(16,185,129,.85); }
+.toast.warn    { background: rgba(245,158,11,.85); }
+.toast.error   { background: rgba(239,68,68,.85); }
+.toast.info    { background: rgba(59,130,246,.85); }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Footer ─────────────────────────────── */
+footer {
+  position: relative; z-index: 10;
+  text-align: center;
+  padding: 20px 32px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: .5px;
+}
+
+/* ── Responsive ─────────────────────────── */
+@media (max-width: 600px) {
+  header { padding: 0 16px; }
+  .add-section, main { padding: 20px 16px; }
+  .form-row { flex-direction: column; }
+  select, input[type="text"] { width: 100% !important; min-width: unset !important; }
+  .stats-bar { padding: 0 16px; overflow-x: auto; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-icon">◈</span>
+    VERSION<em>WATCH</em>
+  </div>
+  <div class="header-right">
+    <span class="last-check-label" id="lastCheckLabel"></span>
+    <button class="btn btn-ghost" id="checkAllBtn" onclick="checkAll()">⟳&nbsp; Check All</button>
+  </div>
+</header>
+
+<div id="apiKeyBanner">
+  <span>⚠ Enter your Google Gemini API key (starts with AIza) to enable live checks</span>
+  <input type="password" id="apiKeyInput" placeholder="AIza..." />
+  <button class="btn btn-primary" onclick="saveApiKey()">Save Key</button>
+</div>
+
+<div class="add-section">
+  <h2>Track a Product</h2>
+  <div class="form-row">
+    <div class="form-group">
+      <label>Category</label>
+      <select id="categorySelect" onchange="filterProducts()">
+        <option value="">All Categories</option>
+        <option>Firewall / NGFW</option>
+        <option>Network OS / Router</option>
+        <option>Switch / SDN</option>
+        <option>Load Balancer / ADC</option>
+        <option>VPN / Endpoint</option>
+        <option>Wireless / Access Point</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Product</label>
+      <select id="productSelect">
+        <option value="">— Select product —</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>My Current Version</label>
+      <input type="text" id="versionInput" placeholder="e.g. 7.4.1" />
+    </div>
+    <div class="form-group">
+      <label>Label (optional)</label>
+      <input type="text" id="labelInput" placeholder="e.g. HQ Firewall" />
+    </div>
+    <div class="form-group" style="justify-content: flex-end;">
+      <button class="btn btn-primary" onclick="addProduct()">+ Add</button>
+    </div>
+  </div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-item stat-total">
+    <span class="stat-value" id="statTotal">0</span>
+    <span class="stat-label">Tracked</span>
+  </div>
+  <div class="stat-item stat-ok">
+    <span class="stat-value" id="statOk">0</span>
+    <span class="stat-label">Up to Date</span>
+  </div>
+  <div class="stat-item stat-update">
+    <span class="stat-value" id="statUpdate">0</span>
+    <span class="stat-label">Updates Available</span>
+  </div>
+  <div class="stat-item stat-error">
+    <span class="stat-value" id="statError">0</span>
+    <span class="stat-label">Errors</span>
+  </div>
+</div>
+
+<main>
+  <div class="controls-row">
+    <div class="filter-tabs">
+      <button class="tab active" onclick="setFilter('all',this)">All</button>
+      <button class="tab" onclick="setFilter('ok',this)">Up to Date</button>
+      <button class="tab" onclick="setFilter('warn',this)">Updates</button>
+      <button class="tab" onclick="setFilter('error',this)">Errors</button>
+    </div>
+  </div>
+  <div class="grid" id="productGrid"></div>
+  <div class="empty-state" id="emptyState">
+    <div class="empty-icon">◈</div>
+    <div class="empty-title">No Products Tracked</div>
+    <div class="empty-sub">Add firewalls, routers, and other IT infrastructure products above to start monitoring their versions.</div>
+  </div>
+</main>
+
+<div id="toast-container"></div>
+
+<footer>
+  VersionWatch — Powered by Google Gemini AI &nbsp;·&nbsp; Data persisted locally in your browser
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  PRODUCT CATALOG
+// ═══════════════════════════════════════════════════
+const CATALOG = [
+  // Firewalls / NGFW
+  { id:"fortios",      brand:"Fortinet",        product:"FortiOS",                 cat:"Firewall / NGFW" },
+  { id:"panos",        brand:"Palo Alto",        product:"PAN-OS",                  cat:"Firewall / NGFW" },
+  { id:"cisco-ftd",    brand:"Cisco",            product:"Firepower FTD",            cat:"Firewall / NGFW" },
+  { id:"cisco-asa",    brand:"Cisco",            product:"ASA Software",             cat:"Firewall / NGFW" },
+  { id:"checkpoint",   brand:"Check Point",      product:"Gaia OS",                 cat:"Firewall / NGFW" },
+  { id:"sonicwall",    brand:"SonicWall",        product:"SonicOS",                 cat:"Firewall / NGFW" },
+  { id:"pfsense",      brand:"Netgate",          product:"pfSense CE",              cat:"Firewall / NGFW" },
+  { id:"pfsense-plus", brand:"Netgate",          product:"pfSense Plus",            cat:"Firewall / NGFW" },
+  { id:"opnsense",     brand:"Deciso",           product:"OPNsense",                cat:"Firewall / NGFW" },
+  { id:"sophos-sfos",  brand:"Sophos",           product:"Sophos Firewall (SFOS)",  cat:"Firewall / NGFW" },
+  { id:"watchguard",   brand:"WatchGuard",       product:"Fireware OS",             cat:"Firewall / NGFW" },
+  { id:"barracuda",    brand:"Barracuda",        product:"CloudGen Firewall",       cat:"Firewall / NGFW" },
+  { id:"juniper-srx",  brand:"Juniper",          product:"SRX Series (Junos)",      cat:"Firewall / NGFW" },
+  // Network OS / Router
+  { id:"ios-xe",       brand:"Cisco",            product:"IOS XE",                  cat:"Network OS / Router" },
+  { id:"ios-xr",       brand:"Cisco",            product:"IOS XR",                  cat:"Network OS / Router" },
+  { id:"nx-os",        brand:"Cisco",            product:"NX-OS",                   cat:"Network OS / Router" },
+  { id:"junos",        brand:"Juniper",          product:"Junos OS",                cat:"Network OS / Router" },
+  { id:"routeros",     brand:"MikroTik",         product:"RouterOS",                cat:"Network OS / Router" },
+  { id:"edgeos",       brand:"Ubiquiti",         product:"EdgeOS",                  cat:"Network OS / Router" },
+  { id:"vrp",          brand:"Huawei",           product:"VRP (Versatile Routing)", cat:"Network OS / Router" },
+  { id:"eos",          brand:"Arista",           product:"EOS",                     cat:"Network OS / Router" },
+  { id:"arubaos-cx",   brand:"Aruba / HPE",      product:"ArubaOS-CX",              cat:"Network OS / Router" },
+  { id:"extreme-xos",  brand:"Extreme Networks", product:"ExtremeXOS (EXOS)",       cat:"Network OS / Router" },
+  // Switch / SDN
+  { id:"dell-os10",    brand:"Dell EMC",         product:"SmartFabric OS10",        cat:"Switch / SDN" },
+  { id:"vmware-nsx",   brand:"VMware / Broadcom","product":"NSX",                   cat:"Switch / SDN" },
+  { id:"arubaos-sw",   brand:"Aruba / HPE",      product:"ArubaOS-Switch",          cat:"Switch / SDN" },
+  { id:"unifi",        brand:"Ubiquiti",         product:"UniFi Network",           cat:"Switch / SDN" },
+  // Load Balancer / ADC
+  { id:"f5-tmos",      brand:"F5",               product:"BIG-IP TMOS",             cat:"Load Balancer / ADC" },
+  { id:"netscaler",    brand:"Citrix",           product:"NetScaler (ADC)",         cat:"Load Balancer / ADC" },
+  { id:"a10-acos",     brand:"A10 Networks",     product:"ACOS",                    cat:"Load Balancer / ADC" },
+  { id:"haproxy",      brand:"HAProxy Tech.",    product:"HAProxy",                 cat:"Load Balancer / ADC" },
+  // VPN / Endpoint
+  { id:"cisco-anycon", brand:"Cisco",            product:"AnyConnect / Secure Client",cat:"VPN / Endpoint" },
+  { id:"globalprotect",brand:"Palo Alto",        product:"GlobalProtect",           cat:"VPN / Endpoint" },
+  { id:"openvpn",      brand:"OpenVPN",          product:"OpenVPN Community",       cat:"VPN / Endpoint" },
+  { id:"wireguard",    brand:"WireGuard",        product:"WireGuard",               cat:"VPN / Endpoint" },
+  { id:"forticlient",  brand:"Fortinet",         product:"FortiClient",             cat:"VPN / Endpoint" },
+  // Wireless / AP
+  { id:"unifi-wifi",   brand:"Ubiquiti",         product:"UniFi WiFi Firmware",     cat:"Wireless / Access Point" },
+  { id:"aruba-ap",     brand:"Aruba / HPE",      product:"Instant AOS (IAP)",       cat:"Wireless / Access Point" },
+  { id:"cisco-wlc",    brand:"Cisco",            product:"Wireless LAN Controller", cat:"Wireless / Access Point" },
+  { id:"ruckus",       brand:"Ruckus / CommScope","product":"SmartZone OS",         cat:"Wireless / Access Point" },
+];
+
+// ═══════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════
+let tracked   = JSON.parse(localStorage.getItem('vw_tracked') || '[]');
+let apiKey    = localStorage.getItem('vw_apikey') || '';
+let activeFilter = 'all';
+
+// ═══════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  if (!apiKey) document.getElementById('apiKeyBanner').classList.add('visible');
+  populateProducts();
+  renderGrid();
+  updateStats();
+
+  if (apiKey && tracked.length > 0) {
+    toast('info', `🔄 Checking ${tracked.length} product${tracked.length>1?'s':''} for updates…`);
+    checkAll(true);
+  }
+});
+
+// ═══════════════════════════════════════════════════
+//  API KEY
+// ═══════════════════════════════════════════════════
+function saveApiKey() {
+  const val = document.getElementById('apiKeyInput').value.trim();
+  // Changed to validate Gemini keys (AIza) instead of Anthropic keys
+  if (!val.startsWith('AIza')) { toast('error','Invalid key — must start with AIza'); return; }
+  apiKey = val;
+  localStorage.setItem('vw_apikey', apiKey);
+  document.getElementById('apiKeyBanner').classList.remove('visible');
+  toast('success','API key saved ✓');
+}
+
+// ═══════════════════════════════════════════════════
+//  PRODUCT SELECT POPULATION
+// ═══════════════════════════════════════════════════
+function populateProducts(cat='') {
+  const sel = document.getElementById('productSelect');
+  sel.innerHTML = '<option value="">— Select product —</option>';
+  const filtered = cat ? CATALOG.filter(p=>p.cat===cat) : CATALOG;
+  // Group by category
+  const groups = {};
+  filtered.forEach(p => {
+    if (!groups[p.cat]) groups[p.cat] = [];
+    groups[p.cat].push(p);
+  });
+  for (const [g, items] of Object.entries(groups)) {
+    const og = document.createElement('optgroup');
+    og.label = g;
+    items.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = `${p.brand} — ${p.product}`;
+      og.appendChild(opt);
+    });
+    sel.appendChild(og);
+  }
+}
+
+function filterProducts() {
+  const cat = document.getElementById('categorySelect').value;
+  populateProducts(cat);
+}
+
+// ═══════════════════════════════════════════════════
+//  ADD PRODUCT
+// ═══════════════════════════════════════════════════
+function addProduct() {
+  const productId = document.getElementById('productSelect').value;
+  const version   = document.getElementById('versionInput').value.trim();
+  const label     = document.getElementById('labelInput').value.trim();
+
+  if (!productId) { toast('warn','Please select a product'); return; }
+  if (!version)   { toast('warn','Please enter your current version'); return; }
+  if (tracked.find(t=>t.id===productId && t.label===label)) {
+    toast('warn','This product is already tracked (same label)'); return;
+  }
+
+  const meta = CATALOG.find(p=>p.id===productId);
+  const entry = {
+    id: productId, brand: meta.brand, product: meta.product, cat: meta.cat,
+    label, currentVersion: version,
+    latestVersion: null, releaseDate: null, eolDate: null, notes: null,
+    status: 'idle', checkedAt: null, uid: Date.now()
+  };
+  tracked.push(entry);
+  save();
+  renderGrid();
+  updateStats();
+
+  document.getElementById('versionInput').value = '';
+  document.getElementById('labelInput').value   = '';
+  toast('success',`${meta.product} added`);
+
+  if (apiKey) checkEntry(entry.uid);
+}
+
+// ═══════════════════════════════════════════════════
+//  REMOVE PRODUCT
+// ═══════════════════════════════════════════════════
+function removeProduct(uid) {
+  tracked = tracked.filter(t=>t.uid!==uid);
+  save();
+  renderGrid();
+  updateStats();
+}
+
+// ═══════════════════════════════════════════════════
+//  RENDER GRID
+// ═══════════════════════════════════════════════════
+function renderGrid() {
+  const grid = document.getElementById('productGrid');
+  const empty = document.getElementById('emptyState');
+  let items = tracked;
+  if (activeFilter !== 'all') items = tracked.filter(t=>t.status===activeFilter);
+
+  if (tracked.length===0) { grid.innerHTML=''; empty.classList.add('visible'); return; }
+  empty.classList.remove('visible');
+
+  grid.innerHTML = items.map(entry => cardHTML(entry)).join('');
+}
+
+function cardHTML(e) {
+  const catColor = { 'Firewall / NGFW':'#ef4444', 'Network OS / Router':'#3b82f6', 'Switch / SDN':'#8b5cf6',
+                     'Load Balancer / ADC':'#06b6d4', 'VPN / Endpoint':'#f59e0b', 'Wireless / Access Point':'#10b981' };
+  const sc = e.status==='ok'?'ok' : e.status==='warn'?'warn' : e.status==='error'?'error' : e.status==='checking'?'checking':'idle';
+  const statusText = { ok:'Up to Date', warn:'Update Available', error:'Check Failed', checking:'Checking…', idle:'Not Checked' };
+  const statusIcon = { ok:'✓', warn:'↑', error:'✕', checking:'⟳', idle:'—' };
+
+  let latestHTML = '';
+  if (e.status==='checking') {
+    latestHTML = `<span class="skeleton"></span>`;
+  } else if (e.latestVersion) {
+    const cls = e.status==='ok' ? 'latest-ok' : e.status==='warn' ? 'latest-warn' : '';
+    latestHTML = `<span class="${cls}">${e.latestVersion}</span>`;
+  } else {
+    latestHTML = `<span style="color:var(--text3);font-size:12px">—</span>`;
+  }
+
+  const checkedStr = e.checkedAt ? `Checked ${timeAgo(e.checkedAt)}` : 'Never checked';
+
+  return `
+<div class="card status-${sc}" id="card-${e.uid}">
+  <div class="card-header">
+    <div class="card-brand">
+      <div class="brand-name">${e.brand}</div>
+      <div class="product-name">${e.product}</div>
+      ${e.label ? `<div class="card-label">${e.label}</div>` : ''}
+    </div>
+    <div class="card-badges">
+      <span class="cat-badge">${e.cat.split('/')[0].trim()}</span>
+      <span class="status-badge ${sc}">
+        <span class="status-dot"></span>
+        ${statusText[sc]}
+      </span>
+    </div>
+  </div>
+  <div class="card-versions">
+    <div class="ver-block">
+      <div class="ver-label">Current</div>
+      <div class="ver-value">${e.currentVersion}</div>
+    </div>
+    <div class="ver-block">
+      <div class="ver-label">Latest</div>
+      <div class="ver-value">${latestHTML}</div>
+      ${e.notes && e.status!=='checking' ? `<div class="ver-notes">${e.notes}</div>` : ''}
+    </div>
+  </div>
+  ${e.status==='warn' ? `
+  <div class="update-alert">
+    ↑ Version <strong>${e.latestVersion}</strong> is available. You are running <strong>${e.currentVersion}</strong>.
+    ${e.eolDate ? `· EOL: ${e.eolDate}` : ''}
+  </div>` : ''}
+  <div class="card-footer">
+    <span class="last-checked">${checkedStr}</span>
+    <div class="card-actions">
+      <button class="btn-sm" onclick="checkEntry(${e.uid})">⟳ Refresh</button>
+      <button class="btn-sm btn-sm-danger" onclick="removeProduct(${e.uid})">✕</button>
+    </div>
+  </div>
+</div>`;
+}
+
+// ═══════════════════════════════════════════════════
+//  CHECK ALL
+// ═══════════════════════════════════════════════════
+async function checkAll(silent=false) {
+  if (!apiKey) { document.getElementById('apiKeyBanner').classList.add('visible'); return; }
+  if (!silent) toast('info',`Checking ${tracked.length} products…`);
+  const now = new Date().toLocaleTimeString();
+  document.getElementById('lastCheckLabel').textContent = `Last check: ${now}`;
+  for (const e of tracked) { await checkEntry(e.uid, true); }
+  if (!silent) toast('success','All checks complete');
+}
+
+// ═══════════════════════════════════════════════════
+//  CHECK SINGLE ENTRY
+// ═══════════════════════════════════════════════════
+async function checkEntry(uid, quiet=false) {
+  if (!apiKey) { document.getElementById('apiKeyBanner').classList.add('visible'); return; }
+  const e = tracked.find(t=>t.uid===uid);
+  if (!e) return;
+
+  e.status = 'checking';
+  updateCard(e);
+  updateStats();
+
+  try {
+    const result = await fetchLatestVersion(e.brand, e.product);
+    e.latestVersion  = result.version || null;
+    e.releaseDate    = result.releaseDate || null;
+    e.eolDate        = result.eolDate || null;
+    e.notes          = result.notes || null;
+    e.checkedAt      = Date.now();
+
+    if (e.latestVersion) {
+      e.status = compareVersions(e.currentVersion, e.latestVersion) ? 'ok' : 'warn';
+    } else {
+      e.status = 'error';
+    }
+  } catch(err) {
+    e.status = 'error';
+    e.checkedAt = Date.now();
+    if (!quiet) toast('error',`Check failed: ${err.message}`);
+  }
+
+  save();
+  updateCard(e);
+  updateStats();
+}
+
+// ═══════════════════════════════════════════════════
+//  GEMINI API CALL
+// ═══════════════════════════════════════════════════
+async function fetchLatestVersion(brand, product) {
+  const prompt = `Search the web for the current latest stable release version of ${brand} ${product}.
+Find the most recently released production/stable/LTS version available.
+Return ONLY a valid JSON object. Do not include markdown formatting or any other text.
+{
+  "version": "x.x.x",
+  "releaseDate": "YYYY-MM or approximate year",
+  "eolDate": "YYYY-MM or unknown",
+  "notes": "one brief sentence about this release"
+}`;
+
+  // Using Gemini 2.5 Flash
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${AIzaSyBjwa8ORSOj3_Pl3RqdBZG8x9BmwAu7GxE}`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      contents: [{
+        parts: [{ text: prompt }]
+      }],
+      system_instruction: { 
+        parts: [{ text: "You must output valid JSON only. Do not wrap in markdown code blocks." }] 
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(()=>({}));
+    console.error("API Error Payload:", err);
+    throw new Error(err.error?.message || `HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+  
+  if (!data.candidates || data.candidates.length === 0) {
+    throw new Error('No response generated by AI');
+  }
+
+  // Extract the text
+  const fullText = data.candidates[0].content.parts[0].text;
+  console.log(`Raw AI response for ${product}:`, fullText);
+
+  // Strip markdown fences and clean the JSON string
+  const clean = fullText.replace(/```json/gi, '').replace(/```/g, '').trim();
+  const match = clean.match(/\{[\s\S]*\}/);
+  
+  if (!match) {
+    console.error("Failed to parse JSON from this text:", fullText);
+    throw new Error('Could not parse JSON from response');
+  }
+
+  return JSON.parse(match[0]);
+}
+
+// ═══════════════════════════════════════════════════
+//  VERSION COMPARISON
+// ═══════════════════════════════════════════════════
+function compareVersions(current, latest) {
+  if (!current || !latest) return false;
+  const norm = v => v.toString().replace(/[^0-9.]/g,'').split('.').map(n=>parseInt(n)||0);
+  const a = norm(current), b = norm(latest);
+  const len = Math.max(a.length, b.length);
+  for (let i=0; i<len; i++) {
+    const av = a[i]||0, bv = b[i]||0;
+    if (av < bv) return false; // current < latest → NOT up to date
+    if (av > bv) return true;  // current > latest → up to date (or pre-release)
+  }
+  return true; // equal
+}
+
+// ═══════════════════════════════════════════════════
+//  UPDATE SINGLE CARD IN-PLACE
+// ═══════════════════════════════════════════════════
+function updateCard(e) {
+  const existing = document.getElementById(`card-${e.uid}`);
+  if (!existing) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = cardHTML(e);
+  existing.replaceWith(tmp.firstElementChild);
+}
+
+// ═══════════════════════════════════════════════════
+//  STATS
+// ═══════════════════════════════════════════════════
+function updateStats() {
+  const ok    = tracked.filter(t=>t.status==='ok').length;
+  const warn  = tracked.filter(t=>t.status==='warn').length;
+  const error = tracked.filter(t=>t.status==='error').length;
+  document.getElementById('statTotal').textContent  = tracked.length;
+  document.getElementById('statOk').textContent     = ok;
+  document.getElementById('statUpdate').textContent = warn;
+  document.getElementById('statError').textContent  = error;
+}
+
+// ═══════════════════════════════════════════════════
+//  FILTER
+// ═══════════════════════════════════════════════════
+function setFilter(f, btn) {
+  activeFilter = f;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  renderGrid();
+}
+
+// ═══════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════
+function save() { localStorage.setItem('vw_tracked', JSON.stringify(tracked)); }
+
+function timeAgo(ts) {
+  const diff = (Date.now()-ts)/1000;
+  if (diff<60)    return 'just now';
+  if (diff<3600)  return `${Math.floor(diff/60)}m ago`;
+  if (diff<86400) return `${Math.floor(diff/3600)}h ago`;
+  return `${Math.floor(diff/86400)}d ago`;
+}
+
+function toast(type, msg) {
+  const c = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity .4s'; setTimeout(()=>el.remove(),400); }, 4000);
+}
+</script>
+</body>
+</html>
