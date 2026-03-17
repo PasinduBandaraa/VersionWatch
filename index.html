@@ -428,7 +428,7 @@ If no major CVEs affect version ${entry.currentVersion}, return an empty array [
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      tools: [{ google_search_retrieval: {} }],
+      //tools: [{ google_search_retrieval: {} }],
       system_instruction: { parts: [{ text: "You must output valid JSON only. Do not wrap in markdown code blocks." }] }
     })
   });
