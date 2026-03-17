@@ -56,10 +56,11 @@ select, input[type="text"] { background: var(--surface); border: 1px solid var(-
 select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236e85a3' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; cursor: pointer; }
 select:focus, input[type="text"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,201,167,.12); }
 select option { background: var(--surface); color: var(--text); }
+select:disabled { opacity: 0.5; cursor: not-allowed; }
 
 #productSelect { min-width: 220px; }
 #categorySelect { min-width: 170px; }
-#modelInput { min-width: 150px; }
+#modelSelect { min-width: 170px; }
 #versionInput { min-width: 110px; font-family: var(--ff-mono); }
 #labelInput { min-width: 130px; }
 
@@ -172,11 +173,13 @@ footer { position: relative; z-index: 10; text-align: center; padding: 20px 32px
     </div>
     <div class="form-group">
       <label>Product</label>
-      <select id="productSelect"><option value="">— Select product —</option></select>
+      <select id="productSelect" onchange="populateModels()"><option value="">— Select product —</option></select>
     </div>
     <div class="form-group">
-      <label>HW Model (Optional)</label>
-      <input type="text" id="modelInput" placeholder="e.g. FortiGate 60F" />
+      <label>HW Model</label>
+      <select id="modelSelect" disabled>
+        <option value="">— Generic / Virtual —</option>
+      </select>
     </div>
     <div class="form-group">
       <label>Current Version</label>
@@ -220,20 +223,21 @@ footer { position: relative; z-index: 10; text-align: center; padding: 20px 32px
 <footer>VersionWatch — Powered by Google Gemini AI &nbsp;·&nbsp; Data persisted locally</footer>
 
 <script>
+// Catalog now includes models arrays for the dynamic dropdown
 const CATALOG = [
-  { id:"fortios", brand:"Fortinet", product:"FortiOS", cat:"Firewall / NGFW" },
-  { id:"panos", brand:"Palo Alto", product:"PAN-OS", cat:"Firewall / NGFW" },
-  { id:"cisco-ftd", brand:"Cisco", product:"Firepower FTD", cat:"Firewall / NGFW" },
-  { id:"cisco-asa", brand:"Cisco", product:"ASA Software", cat:"Firewall / NGFW" },
-  { id:"checkpoint", brand:"Check Point", product:"Gaia OS", cat:"Firewall / NGFW" },
-  { id:"pfsense-plus", brand:"Netgate", product:"pfSense Plus", cat:"Firewall / NGFW" },
-  { id:"opnsense", brand:"Deciso", product:"OPNsense", cat:"Firewall / NGFW" },
-  { id:"ios-xe", brand:"Cisco", product:"IOS XE", cat:"Network OS / Router" },
-  { id:"junos", brand:"Juniper", product:"Junos OS", cat:"Network OS / Router" },
-  { id:"arubaos-sw", brand:"Aruba / HPE", product:"ArubaOS-Switch", cat:"Switch / SDN" },
-  { id:"unifi", brand:"Ubiquiti", product:"UniFi Network", cat:"Switch / SDN" },
-  { id:"f5-tmos", brand:"F5", product:"BIG-IP TMOS", cat:"Load Balancer / ADC" },
-  { id:"cisco-anycon", brand:"Cisco", product:"AnyConnect / Secure Client", cat:"VPN / Endpoint" }
+  { id:"fortios", brand:"Fortinet", product:"FortiOS", cat:"Firewall / NGFW", models: ["FortiGate 40F", "FortiGate 60F", "FortiGate 80F", "FortiGate 100F", "FortiGate 200F", "VM64"] },
+  { id:"panos", brand:"Palo Alto", product:"PAN-OS", cat:"Firewall / NGFW", models: ["PA-400 Series", "PA-800 Series", "PA-3200 Series", "PA-5400 Series", "VM-Series"] },
+  { id:"cisco-ftd", brand:"Cisco", product:"Firepower FTD", cat:"Firewall / NGFW", models: ["Firepower 1000", "Firepower 2100", "Secure Firewall 3100", "FPR 4100/9300"] },
+  { id:"cisco-asa", brand:"Cisco", product:"ASA Software", cat:"Firewall / NGFW", models: ["ASA 5500-X", "Firepower 1000 (ASA mode)", "Firepower 2100 (ASA mode)", "ASAv"] },
+  { id:"checkpoint", brand:"Check Point", product:"Gaia OS", cat:"Firewall / NGFW", models: ["Quantum Spark", "Quantum 3600/6200", "Quantum 6600/7000", "CloudGuard"] },
+  { id:"pfsense-plus", brand:"Netgate", product:"pfSense Plus", cat:"Firewall / NGFW", models: ["Netgate 1100", "Netgate 2100", "Netgate 4200", "Netgate 6100", "Netgate 8200"] },
+  { id:"opnsense", brand:"Deciso", product:"OPNsense", cat:"Firewall / NGFW", models: ["DEC600 Series", "DEC800 Series", "DEC3000 Series", "DEC4000 Series"] },
+  { id:"ios-xe", brand:"Cisco", product:"IOS XE", cat:"Network OS / Router", models: ["Catalyst 9200", "Catalyst 9300", "Catalyst 9500", "ISR 4000", "Catalyst 8000 Edge"] },
+  { id:"junos", brand:"Juniper", product:"Junos OS", cat:"Network OS / Router", models: ["SRX300 Line", "SRX1500", "EX2300/EX3400", "QFX5120"] },
+  { id:"arubaos-sw", brand:"Aruba / HPE", product:"ArubaOS-Switch", cat:"Switch / SDN", models: ["Aruba 2540", "Aruba 2930F", "Aruba 3810M", "Aruba 5400R"] },
+  { id:"unifi", brand:"Ubiquiti", product:"UniFi Network", cat:"Switch / SDN", models: ["UDM Pro", "UDM SE", "UXG Pro", "USW Pro Series"] },
+  { id:"f5-tmos", brand:"F5", product:"BIG-IP TMOS", cat:"Load Balancer / ADC", models: ["i2000 Series", "i4000 Series", "i5000 Series", "i7000 Series", "BIG-IP VE"] },
+  { id:"cisco-anycon", brand:"Cisco", product:"Secure Client (AnyConnect)", cat:"VPN / Endpoint", models: ["Windows", "macOS", "Linux", "iOS", "Android"] }
 ];
 
 let tracked = JSON.parse(localStorage.getItem('vw_tracked') || '[]');
@@ -256,6 +260,9 @@ function saveApiKey() {
 function populateProducts(cat='') {
   const sel = document.getElementById('productSelect');
   sel.innerHTML = '<option value="">— Select product —</option>';
+  document.getElementById('modelSelect').innerHTML = '<option value="">— Generic / Virtual —</option>';
+  document.getElementById('modelSelect').disabled = true;
+
   const filtered = cat ? CATALOG.filter(p=>p.cat===cat) : CATALOG;
   const groups = {};
   filtered.forEach(p => { if (!groups[p.cat]) groups[p.cat] = []; groups[p.cat].push(p); });
@@ -266,13 +273,33 @@ function populateProducts(cat='') {
   }
 }
 
+function populateModels() {
+  const prodId = document.getElementById('productSelect').value;
+  const modelSel = document.getElementById('modelSelect');
+  modelSel.innerHTML = '<option value="">— Generic / Virtual —</option>';
+  
+  if (!prodId) { modelSel.disabled = true; return; }
+
+  const prod = CATALOG.find(p => p.id === prodId);
+  if (prod && prod.models && prod.models.length > 0) {
+    modelSel.disabled = false;
+    prod.models.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m; opt.textContent = m;
+      modelSel.appendChild(opt);
+    });
+  } else {
+    modelSel.disabled = true;
+  }
+}
+
 function filterProducts() { populateProducts(document.getElementById('categorySelect').value); }
 
 function addProduct() {
   const productId = document.getElementById('productSelect').value;
   const version = document.getElementById('versionInput').value.trim();
   const label = document.getElementById('labelInput').value.trim();
-  const model = document.getElementById('modelInput').value.trim();
+  const model = document.getElementById('modelSelect').value; // Now pulls from the select
 
   if (!productId || !version) { toast('warn','Product and Current Version are required'); return; }
 
@@ -286,7 +313,6 @@ function addProduct() {
   
   document.getElementById('versionInput').value = '';
   document.getElementById('labelInput').value = '';
-  document.getElementById('modelInput').value = '';
   
   if (apiKey) checkEntry(entry.uid);
 }
