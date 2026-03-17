@@ -1012,7 +1012,7 @@ Return ONLY a valid JSON object. Do not include markdown formatting or any other
 }`;
 
   // Using Gemini 2.5 Flash
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${AIzaSyBjwa8ORSOj3_Pl3RqdBZG8x9BmwAu7GxE}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
   const response = await fetch(url, {
     method: 'POST',
